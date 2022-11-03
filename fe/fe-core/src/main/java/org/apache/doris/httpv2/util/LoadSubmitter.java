@@ -31,6 +31,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import sun.net.util.IPAddressUtil;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -55,6 +56,8 @@ public class LoadSubmitter {
     private ThreadPoolExecutor executor = ThreadPoolManager.newDaemonCacheThreadPool(2, "load-submitter", true);
 
     private static final String STREAM_LOAD_URL_PATTERN = "http://%s:%d/api/%s/%s/_stream_load";
+
+    private static final String STREAM_LOAD_URL_PATTERN_V6 = "http://[%s]:%d/api/%s/%s/_stream_load";
 
     public Future<SubmitResult> submit(UploadAction.LoadContext loadContext) {
         LoadSubmitter.Worker worker = new LoadSubmitter.Worker(loadContext);
@@ -83,8 +86,14 @@ public class LoadSubmitter {
             // choose a backend to submit the stream load
             Backend be = selectOneBackend();
 
-            String loadUrlStr = String.format(STREAM_LOAD_URL_PATTERN, be.getHost(),
+            String loadUrlStr;
+            if (IPAddressUtil.isIPv6LiteralAddress(be.getHost())) {
+                loadUrlStr = String.format(STREAM_LOAD_URL_PATTERN_V6, be.getHost(), be.getHttpPort(),
+                    loadContext.db, loadContext.tbl);
+            } else {
+                loadUrlStr = String.format(STREAM_LOAD_URL_PATTERN, be.getHost(),
                     be.getHttpPort(), loadContext.db, loadContext.tbl);
+            }
             URL loadUrl = new URL(loadUrlStr);
             HttpURLConnection conn = (HttpURLConnection) loadUrl.openConnection();
             conn.setRequestMethod("PUT");

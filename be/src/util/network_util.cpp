@@ -39,22 +39,38 @@
 namespace doris {
 
 InetAddress::InetAddress(struct sockaddr* addr) {
-    this->addr = *(struct sockaddr_in*)addr;
+    this->addr = *(struct sockaddr_storage*)addr;
 }
 
-bool InetAddress::is_address_v4() const {
-    return addr.sin_family == AF_INET;
+bool InetAddress::is_loopback() {
+    if (addr.ss_family == AF_INET) {
+        in_addr_t s_addr = ((struct sockaddr_in*)&addr)->sin_addr.s_addr;
+        return (ntohl(s_addr) & 0xFF000000) == 0x7F000000;
+    } else if (addr.ss_family == AF_INET6) {
+        struct in6_addr in6_addr = ((struct sockaddr_in6*)&addr)->sin6_addr;
+        return IN6_IS_ADDR_LOOPBACK(&in6_addr);
+    } else {
+        LOG(WARNING) << "unknow address";
+        return false;
+    }
 }
 
-bool InetAddress::is_loopback_v4() {
-    in_addr_t s_addr = addr.sin_addr.s_addr;
-    return (ntohl(s_addr) & 0xFF000000) == 0x7F000000;
+std::string InetAddress::get_host_address() {
+    if (addr.ss_family == AF_INET) {
+        char addr_buf[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(((struct sockaddr_in*)&addr)->sin_addr), addr_buf, INET_ADDRSTRLEN);
+        return std::string(addr_buf);
+    } else if (addr.ss_family == AF_INET6) {
+        char addr_buf[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &(((struct sockaddr_in6*)&addr)->sin6_addr), addr_buf,
+                  INET6_ADDRSTRLEN);
+        return std::string(addr_buf);
+    } else {
+        return std::string {"unknown address"};
+    }
 }
-
-std::string InetAddress::get_host_address_v4() {
-    char addr_buf[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(addr.sin_addr), addr_buf, INET_ADDRSTRLEN);
-    return std::string(addr_buf);
+bool InetAddress::is_ipv6() {
+    return addr.ss_family == AF_INET6;
 }
 
 static const std::string LOCALHOST("127.0.0.1");
@@ -114,7 +130,7 @@ bool find_first_non_localhost(const std::vector<std::string>& addresses, std::st
     return false;
 }
 
-Status get_hosts_v4(std::vector<InetAddress>* hosts) {
+Status get_hosts(std::vector<InetAddress>* hosts) {
     ifaddrs* if_addrs = nullptr;
     if (getifaddrs(&if_addrs)) {
         std::stringstream ss;
@@ -130,18 +146,15 @@ Status get_hosts_v4(std::vector<InetAddress>* hosts) {
         if (if_addr->ifa_addr->sa_family == AF_INET) { // check it is IP4
             // is a valid IP4 Address
             hosts->emplace_back(if_addr->ifa_addr);
-        }
-        //TODO: IPv6
-        /*
-        else if (if_addr->ifa_addr->sa_family == AF_INET6) { // check it is IP6
-            // is a valid IP6 Address
-            void* tmp_addr = &((struct sockaddr_in6 *)if_addr->ifa_addr)->sin6_addr;
+        } else if (if_addr->ifa_addr->sa_family == AF_INET6) { // check it is IP6
+            // check legitimacy of IP6 Address
+            void* tmp_addr = &((struct sockaddr_in6*)if_addr->ifa_addr)->sin6_addr;
             char addr_buf[INET6_ADDRSTRLEN];
             inet_ntop(AF_INET6, tmp_addr, addr_buf, sizeof(addr_buf));
-            local_ip->assign(addr_buf);
-            break;
+            hosts->emplace_back(if_addr->ifa_addr);
+        } else {
+            continue;
         }
-        */
     }
 
     if (if_addrs != nullptr) {

@@ -19,6 +19,7 @@ package org.apache.doris.common.util;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import sun.net.util.IPAddressUtil;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -114,4 +115,19 @@ public class NetUtils {
         }
         return false;
     }
+
+    public static String getHostPort(String ip, int port) {
+        if (IPAddressUtil.isIPv6LiteralAddress(ip)) {
+            return "[" + ip + "]:" + port;
+        }
+        return ip + ":" + port;
+    }
+
+    public static String getHostPort(String ip, String port) {
+        if (IPAddressUtil.isIPv6LiteralAddress(ip)) {
+            return "[" + ip + "]:" + port;
+        }
+        return ip + ":" + port;
+    }
+
 }

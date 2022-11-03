@@ -53,6 +53,7 @@
 #include "runtime/exec_env.h"
 #include "runtime/memory/chunk_allocator.h"
 #include "runtime/user_function_cache.h"
+#include "service/backend_options.h"
 #include "util/cpu_info.h"
 #include "util/debug_util.h"
 #include "util/disk_info.h"
@@ -188,7 +189,7 @@ static void init_doris_metrics(const std::vector<StorePath>& store_paths) {
             LOG(WARNING) << "get disk devices failed, status=" << st.get_error_msg();
             return;
         }
-        st = get_inet_interfaces(&network_interfaces);
+        st = get_inet_interfaces(&network_interfaces, BackendOptions::is_bind_ipv6());
         if (!st.ok()) {
             LOG(WARNING) << "get inet interfaces failed, status=" << st.get_error_msg();
             return;

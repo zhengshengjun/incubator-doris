@@ -907,12 +907,19 @@ public class SystemInfoService {
             throw new AnalysisException("Invalid host port: " + hostPort);
         }
 
-        String[] pair = hostPort.split(":");
+        String[] pair;
+        if (hostPort.charAt(0) == '[') {
+            pair = hostPort.substring(1).split("]:");
+        } else {
+            pair = hostPort.split(":");
+        }
+
         if (pair.length != 2) {
             throw new AnalysisException("Invalid host port: " + hostPort);
         }
 
         String host = pair[0];
+        String port = pair[1];
         if (Strings.isNullOrEmpty(host)) {
             throw new AnalysisException("Host is null");
         }
@@ -930,7 +937,7 @@ public class SystemInfoService {
             }
 
             // validate port
-            heartbeatPort = Integer.parseInt(pair[1]);
+            heartbeatPort = Integer.parseInt(port);
 
             if (heartbeatPort <= 0 || heartbeatPort >= 65536) {
                 throw new AnalysisException("Port is out of range: " + heartbeatPort);

@@ -167,8 +167,15 @@ Status VDataStreamSender::Channel::send_block(PBlock* block, bool eos) {
                                                            RefCountClosure<PTransmitDataResult>>(
                 &_brpc_request, _closure);
         RETURN_IF_ERROR(st);
-        std::string brpc_url =
-                fmt::format("http://{}:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+
+        //format an ipv6 address
+        std::string brpc_url;
+        if (_brpc_dest_addr.hostname.find(":") != std::string::npos) {
+            brpc_url =
+                    fmt::format("list://[{}]:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+        } else {
+            brpc_url = fmt::format("http://{}:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+        }
         std::shared_ptr<PBackendService_Stub> _brpc_http_stub =
                 _state->exec_env()->brpc_internal_client_cache()->get_new_client_no_cache(brpc_url,
                                                                                           "http");

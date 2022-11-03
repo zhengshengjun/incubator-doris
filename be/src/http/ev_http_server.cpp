@@ -74,6 +74,9 @@ static int on_connection(struct evhttp_request* req, void* param) {
 
 EvHttpServer::EvHttpServer(int port, int num_workers)
         : _host("0.0.0.0"), _port(port), _num_workers(num_workers), _real_port(0) {
+    if (BackendOptions::is_bind_ipv6()) {
+        _host = "[::0]";
+    }
     DCHECK_GT(_num_workers, 0);
 }
 
@@ -147,7 +150,7 @@ void EvHttpServer::join() {}
 
 Status EvHttpServer::_bind() {
     butil::EndPoint point;
-    auto res = butil::hostname2endpoint(_host.c_str(), _port, &point);
+    auto res = butil::str2endpoint(_host.c_str(), _port, &point);
     if (res < 0) {
         return Status::InternalError("convert address failed, host={}, port={}", _host, _port);
     }

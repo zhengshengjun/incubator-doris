@@ -32,6 +32,7 @@ import org.apache.doris.system.Backend;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import sun.net.util.IPAddressUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -122,18 +123,21 @@ public class TabletsProcDir implements ProcDirInterface {
                         tabletInfo.add(tablet.getCheckedVersion());
                         tabletInfo.add(replica.getVersionCount());
                         tabletInfo.add(replica.getPathHash());
-
+                        String ipPortPattern = "%s:%d";
+                        if (IPAddressUtil.isIPv6LiteralAddress(backendMap.get(replica.getBackendId()).getHost())) {
+                            ipPortPattern = "[%s]:%d";
+                        }
                         Backend be = backendMap.get(replica.getBackendId());
                         String host = (be == null ? Backend.DUMMY_IP : be.getHost());
                         int port = (be == null ? 0 : be.getHttpPort());
-                        String metaUrl = String.format("http://%s:%d/api/meta/header/%d",
+                        String metaUrl = String.format("http://" + ipPortPattern + "/api/meta/header/%d",
                                 host,
                                 port,
                                 tabletId,
                                 replica.getSchemaHash());
                         tabletInfo.add(metaUrl);
                         String compactionUrl = String.format(
-                                "http://%s:%d/api/compaction/show?tablet_id=%d",
+                                "http://" + ipPortPattern + "/api/compaction/show?tablet_id=%d",
                                 host,
                                 port,
                                 tabletId,

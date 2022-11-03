@@ -296,6 +296,6 @@ public class BaseController {
     }
 
     protected String getCurrentFrontendURL() {
-        return "http://" + FrontendOptions.getLocalHostAddress() + ":" + Config.http_port;
+        return "http://" + FrontendOptions.getHostname() + ":" + Config.http_port;
     }
 }

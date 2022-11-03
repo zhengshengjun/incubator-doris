@@ -440,7 +440,9 @@ void NodeChannel::cancel(const std::string& cancel_msg) {
     if (config::tablet_writer_ignore_eovercrowded) {
         closure->cntl.ignore_eovercrowded();
     }
-    _stub->tablet_writer_cancel(&closure->cntl, &request, &closure->result, closure);
+    if (_stub != nullptr) {
+        _stub->tablet_writer_cancel(&closure->cntl, &request, &closure->result, closure);
+    }
     request.release_id();
 }
 
@@ -572,7 +574,13 @@ void NodeChannel::try_send_batch(RuntimeState* state) {
             _add_batch_closure->clear_in_flight();
             return;
         }
-        std::string brpc_url = fmt::format("http://{}:{}", _node_info.host, _node_info.brpc_port);
+        //format an ipv6 address
+        std::string brpc_url;
+        if (_node_info.host.find(":") != std::string::npos) {
+            brpc_url = fmt::format("list://[{}]:{}", _node_info.host, _node_info.brpc_port);
+        } else {
+            brpc_url = fmt::format("http://{}:{}", _node_info.host, _node_info.brpc_port);
+        }
         std::shared_ptr<PBackendService_Stub> _brpc_http_stub =
                 _state->exec_env()->brpc_internal_client_cache()->get_new_client_no_cache(brpc_url,
                                                                                           "http");

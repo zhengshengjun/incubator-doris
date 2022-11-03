@@ -27,16 +27,15 @@
 
 namespace doris {
 
-//TODO: ipv6
 class InetAddress {
 public:
     InetAddress(struct sockaddr* addr);
-    bool is_address_v4() const;
-    bool is_loopback_v4();
-    std::string get_host_address_v4();
+    bool is_loopback();
+    std::string get_host_address();
+    bool is_ipv6();
 
 private:
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
 };
 
 // Looks up all IP addresses associated with a given hostname. Returns
@@ -52,7 +51,7 @@ bool find_first_non_localhost(const std::vector<std::string>& addresses, std::st
 // Returns OK if a hostname can be found, false otherwise.
 Status get_hostname(std::string* hostname);
 
-Status get_hosts_v4(std::vector<InetAddress>* hosts);
+Status get_hosts(std::vector<InetAddress>* hosts);
 
 // Utility method because Thrift does not supply useful constructors
 TNetworkAddress make_network_address(const std::string& hostname, int port);

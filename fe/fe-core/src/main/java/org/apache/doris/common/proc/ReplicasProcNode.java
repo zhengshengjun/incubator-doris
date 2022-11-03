@@ -24,6 +24,7 @@ import org.apache.doris.system.Backend;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import sun.net.util.IPAddressUtil;
 
 import java.util.Arrays;
 import java.util.List;
@@ -56,13 +57,17 @@ public class ReplicasProcNode implements ProcNodeInterface {
             Backend be = backendMap.get(replica.getBackendId());
             String host = (be == null ? Backend.DUMMY_IP : be.getHost());
             int port = (be == null ? 0 : be.getHttpPort());
-            String metaUrl = String.format("http://%s:%d/api/meta/header/%d",
+            String ipPortPattern = "%s:%d";
+            if (IPAddressUtil.isIPv6LiteralAddress(backendMap.get(replica.getBackendId()).getHost())) {
+                ipPortPattern = "[%s]:%d";
+            }
+            String metaUrl = String.format("http://" + ipPortPattern + "/api/meta/header/%d",
                     host, port,
                     tabletId,
                     replica.getSchemaHash());
 
             String compactionUrl = String.format(
-                    "http://%s:%d/api/compaction/show?tablet_id=%d",
+                    "http://" + ipPortPattern + "/api/compaction/show?tablet_id=%d",
                     host, port,
                     tabletId,
                     replica.getSchemaHash());

@@ -165,8 +165,14 @@ Status DataStreamSender::Channel::send_batch(PRowBatch* batch, bool eos) {
                                                            RefCountClosure<PTransmitDataResult>>(
                 &_brpc_request, _closure);
         RETURN_IF_ERROR(st);
-        std::string brpc_url =
-                fmt::format("http://{}:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+        std::string brpc_url;
+        //format an ipv6 address
+        if (_brpc_dest_addr.hostname.find(":") != std::string::npos) {
+            brpc_url =
+                    fmt::format("list://[{}]:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+        } else {
+            brpc_url = fmt::format("http://{}:{}", _brpc_dest_addr.hostname, _brpc_dest_addr.port);
+        }
         std::shared_ptr<PBackendService_Stub> _brpc_http_stub =
                 _state->exec_env()->brpc_internal_client_cache()->get_new_client_no_cache(brpc_url,
                                                                                           "http");

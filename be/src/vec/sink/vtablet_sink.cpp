@@ -335,8 +335,8 @@ void VNodeChannel::try_send_block(RuntimeState* state) {
         CHECK(_pending_batches_num == 0) << _pending_batches_num;
     }
 
-    if (_parent->_transfer_large_data_by_brpc && request.has_block() &&
-        request.block().has_column_values() && request.ByteSizeLong() > MIN_HTTP_BRPC_SIZE) {
+    // _parent->_transfer_large_data_by_brpc &&
+    if (request.has_block() && request.block().has_column_values() && request.ByteSizeLong() > 0) {
         Status st = request_embed_attachment_contain_block<
                 PTabletWriterAddBlockRequest, ReusableClosure<PTabletWriterAddBlockResult>>(
                 &request, _add_block_closure);
@@ -345,7 +345,14 @@ void VNodeChannel::try_send_block(RuntimeState* state) {
             _add_block_closure->clear_in_flight();
             return;
         }
-        std::string brpc_url = fmt::format("http://{}:{}", _node_info.host, _node_info.brpc_port);
+
+        //format an ipv6 address
+        std::string brpc_url;
+        if (_node_info.host.find(":") != std::string::npos) {
+            brpc_url = fmt::format("list://[{}]:{}", _node_info.host, _node_info.brpc_port);
+        } else {
+            brpc_url = fmt::format("http://{}:{}", _node_info.host, _node_info.brpc_port);
+        }
         std::shared_ptr<PBackendService_Stub> _brpc_http_stub =
                 _state->exec_env()->brpc_internal_client_cache()->get_new_client_no_cache(brpc_url,
                                                                                           "http");

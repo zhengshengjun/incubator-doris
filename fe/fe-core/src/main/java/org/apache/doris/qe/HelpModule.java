@@ -266,7 +266,8 @@ public class HelpModule {
         URL helpResource = instance.getClass().getClassLoader()
                 .getResource(HELP_ZIP_FILE_NAME);
         if (helpResource == null) {
-            throw new IOException("Can not find help zip file: " + HELP_ZIP_FILE_NAME);
+            return;
+            // throw new IOException("Can not find help zip file: " + HELP_ZIP_FILE_NAME);
         }
         zipFilePath = helpResource.getPath();
         setUpByZip(zipFilePath);

@@ -60,7 +60,17 @@ public:
 
     std::shared_ptr<T> get_client(const std::string& host, int port) {
         std::string host_port = fmt::format("{}:{}", host, port);
-        return get_client(host_port);
+        std::shared_ptr<T> stub_ptr;
+        auto get_value = [&stub_ptr](typename StubMap<T>::mapped_type& v) { stub_ptr = v; };
+        if (LIKELY(_stub_map.if_contains(host_port, get_value))) {
+            return stub_ptr;
+        }
+
+        // new one stub and insert into map
+        auto stub = get_new_client_no_cache(host, port);
+        _stub_map.try_emplace_l(
+                host_port, [&stub](typename StubMap<T>::mapped_type& v) { stub = v; }, stub);
+        return stub;
     }
 
     std::shared_ptr<T> get_client(const std::string& host_port) {
@@ -104,6 +114,19 @@ public:
             return nullptr;
         }
         return std::make_shared<T>(channel.release(), google::protobuf::Service::STUB_OWNS_CHANNEL);
+    }
+
+    std::shared_ptr<T> get_new_client_no_cache(const std::string& host, int port) {
+        std::unique_ptr<brpc::Channel> channel(new brpc::Channel());
+        brpc::ChannelOptions options;
+        std::string formatted_host;
+        //if host is an ipv6 address and not starts with Bracket
+        if (host.find(":") != std::string::npos && host[0] != '[') {
+            formatted_host = "[" + host + "]";
+        } else {
+            formatted_host = host;
+        }
+        return get_new_client_no_cache(fmt::format("{}:{}", formatted_host, port));
     }
 
     size_t size() { return _stub_map.size(); }
