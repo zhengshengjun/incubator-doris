@@ -121,6 +121,8 @@ public class PropertyAnalyzer {
 
     public static final String PROPERTIES_STORE_ROW_COLUMN = "store_row_column";
 
+    public static final String PROPERTIES_MUTABLE = "mutable";
+
     private static final Logger LOG = LogManager.getLogger(PropertyAnalyzer.class);
     private static final String COMMA_SEPARATOR = ",";
     private static final double MAX_FPP = 0.05;

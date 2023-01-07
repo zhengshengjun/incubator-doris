@@ -76,6 +76,8 @@ public class PartitionInfo implements Writable {
     // so we defer adding meta serialization until memory engine feature is more complete.
     protected Map<Long, TTabletType> idToTabletType;
 
+    protected Map<Long /* partition id */, Boolean /* mutable */> idToMutable;
+
     public PartitionInfo() {
         this.type = PartitionType.UNPARTITIONED;
         this.idToDataProperty = new HashMap<>();
@@ -83,6 +85,7 @@ public class PartitionInfo implements Writable {
         this.idToInMemory = new HashMap<>();
         this.idToTabletType = new HashMap<>();
         this.idToStoragePolicy = new HashMap<>();
+        this.idToMutable = new HashMap<>();
     }
 
     public PartitionInfo(PartitionType type) {
@@ -92,6 +95,7 @@ public class PartitionInfo implements Writable {
         this.idToInMemory = new HashMap<>();
         this.idToTabletType = new HashMap<>();
         this.idToStoragePolicy = new HashMap<>();
+        this.idToMutable = new HashMap<>();
     }
 
     public PartitionInfo(PartitionType type, List<Column> partitionColumns) {
@@ -146,6 +150,7 @@ public class PartitionInfo implements Writable {
         idToReplicaAllocation.put(partitionId, desc.getReplicaAlloc());
         idToInMemory.put(partitionId, desc.isInMemory());
         idToStoragePolicy.put(partitionId, desc.getStoragePolicy());
+        idToMutable.put(partitionId, desc.isMutable());
 
         return partitionItem;
     }
@@ -156,12 +161,13 @@ public class PartitionInfo implements Writable {
 
     public void unprotectHandleNewSinglePartitionDesc(long partitionId, boolean isTemp, PartitionItem partitionItem,
                                                       DataProperty dataProperty, ReplicaAllocation replicaAlloc,
-                                                      boolean isInMemory) {
+                                                      boolean isInMemory, boolean isMutable) {
         setItemInternal(partitionId, isTemp, partitionItem);
         idToDataProperty.put(partitionId, dataProperty);
         idToReplicaAllocation.put(partitionId, replicaAlloc);
         idToInMemory.put(partitionId, isInMemory);
         idToStoragePolicy.put(partitionId, "");
+        idToMutable.put(partitionId, isMutable);
     }
 
     public List<Map.Entry<Long, PartitionItem>> getPartitionItemEntryList(boolean isTemp, boolean isSorted) {
@@ -247,6 +253,14 @@ public class PartitionInfo implements Writable {
         return idToInMemory.get(partitionId);
     }
 
+    public boolean getIsMutable(long partitionId) {
+        return idToMutable.get(partitionId);
+    }
+
+    public void setIsMutable(long partitionId, boolean isMutable) {
+        idToMutable.put(partitionId, isMutable);
+    }
+
     public void setIsInMemory(long partitionId, boolean isInMemory) {
         idToInMemory.put(partitionId, isInMemory);
     }
@@ -268,20 +282,23 @@ public class PartitionInfo implements Writable {
         idToInMemory.remove(partitionId);
         idToItem.remove(partitionId);
         idToTempItem.remove(partitionId);
+        idToMutable.remove(partitionId);
     }
 
     public void addPartition(long partitionId, boolean isTemp, PartitionItem item, DataProperty dataProperty,
-                             ReplicaAllocation replicaAlloc, boolean isInMemory) {
-        addPartition(partitionId, dataProperty, replicaAlloc, isInMemory);
+                             ReplicaAllocation replicaAlloc, boolean isInMemory, boolean isMutable) {
+        addPartition(partitionId, dataProperty, replicaAlloc, isInMemory, isMutable);
         setItemInternal(partitionId, isTemp, item);
+        idToMutable.put(partitionId, isMutable);
     }
 
     public void addPartition(long partitionId, DataProperty dataProperty,
                              ReplicaAllocation replicaAlloc,
-                             boolean isInMemory) {
+                             boolean isInMemory, boolean isMutable) {
         idToDataProperty.put(partitionId, dataProperty);
         idToReplicaAllocation.put(partitionId, replicaAlloc);
         idToInMemory.put(partitionId, isInMemory);
+        idToMutable.put(partitionId, isMutable);
     }
 
     public static PartitionInfo read(DataInput in) throws IOException {
@@ -338,6 +355,7 @@ public class PartitionInfo implements Writable {
 
         Preconditions.checkState(idToDataProperty.size() == idToReplicaAllocation.size());
         Preconditions.checkState(idToInMemory.keySet().equals(idToReplicaAllocation.keySet()));
+        Preconditions.checkState(idToMutable.keySet().equals(idToReplicaAllocation.keySet()));
         out.writeInt(idToDataProperty.size());
         for (Map.Entry<Long, DataProperty> entry : idToDataProperty.entrySet()) {
             out.writeLong(entry.getKey());
@@ -350,6 +368,7 @@ public class PartitionInfo implements Writable {
 
             idToReplicaAllocation.get(entry.getKey()).write(out);
             out.writeBoolean(idToInMemory.get(entry.getKey()));
+            out.writeBoolean(idToMutable.get(entry.getKey()));
         }
     }
 
@@ -376,6 +395,16 @@ public class PartitionInfo implements Writable {
             }
 
             idToInMemory.put(partitionId, in.readBoolean());
+            if (Env.getCurrentEnvJournalVersion() >= FeMetaVersion.VERSION_116) {
+                idToMutable.put(partitionId, in.readBoolean());
+            } else {
+                if (idToMutable == null) {
+                    System.out.println("id to mutable is null");
+                } else {
+                    // for compatibility, default is true
+                    idToMutable.put(partitionId, true);
+                }
+            }
         }
     }
 
@@ -395,6 +424,7 @@ public class PartitionInfo implements Writable {
             buff.append("data_property: ").append(entry.getValue().toString()).append("; ");
             buff.append("replica number: ").append(idToReplicaAllocation.get(entry.getKey())).append("; ");
             buff.append("in memory: ").append(idToInMemory.get(entry.getKey()));
+            buff.append("is mutable: ").append(idToMutable.get(entry.getKey()));
         }
 
         return buff.toString();

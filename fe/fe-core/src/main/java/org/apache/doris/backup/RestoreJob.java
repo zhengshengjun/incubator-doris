@@ -823,7 +823,8 @@ public class RestoreJob extends AbstractJob {
                         }
                         localPartitionInfo.addPartition(restoredPart.getId(), false, remoteItem,
                                 remoteDataProperty, restoreReplicaAlloc,
-                                remotePartitionInfo.getIsInMemory(remotePartId));
+                                remotePartitionInfo.getIsInMemory(remotePartId),
+                                remotePartitionInfo.getIsMutable(remotePartId));
                     }
                     localTbl.addPartition(restoredPart);
                 } finally {
@@ -1168,7 +1169,8 @@ public class RestoreJob extends AbstractJob {
             }
             localPartitionInfo.addPartition(restorePart.getId(), false, remotePartitionInfo.getItem(remotePartId),
                     remoteDataProperty, restoreReplicaAlloc,
-                    remotePartitionInfo.getIsInMemory(remotePartId));
+                    remotePartitionInfo.getIsInMemory(remotePartId),
+                    remotePartitionInfo.getIsMutable(remotePartId));
             localTbl.addPartition(restorePart);
 
             // modify tablet inverted index

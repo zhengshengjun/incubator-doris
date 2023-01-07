@@ -3356,7 +3356,8 @@ public class Env {
                             ModifyPartitionInfo info = new ModifyPartitionInfo(db.getId(), olapTable.getId(),
                                     partition.getId(), hddProperty, ReplicaAllocation.NOT_SET,
                                     partitionInfo.getIsInMemory(partition.getId()),
-                                    partitionInfo.getStoragePolicy(partitionId), Maps.newHashMap());
+                                    partitionInfo.getStoragePolicy(partitionId), Maps.newHashMap(),
+                                    partitionInfo.getIsMutable(partition.getId()));
 
                             editLog.logModifyPartition(info);
                         }
@@ -4199,7 +4200,7 @@ public class Env {
         // log
         ModifyPartitionInfo info = new ModifyPartitionInfo(db.getId(), table.getId(), partition.getId(),
                 newDataProperty, replicaAlloc, isInMemory, partitionInfo.getStoragePolicy(partition.getId()),
-                tblProperties);
+                tblProperties, partitionInfo.getIsMutable(partition.getId()));
         editLog.logModifyPartition(info);
         LOG.debug("modify partition[{}-{}-{}] replica allocation to {}", db.getId(), table.getId(), partition.getName(),
                 replicaAlloc.toCreateStmt());

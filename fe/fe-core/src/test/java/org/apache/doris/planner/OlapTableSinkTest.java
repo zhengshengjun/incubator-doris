@@ -102,6 +102,7 @@ public class OlapTableSinkTest {
             }
         };
 
+        dstTable.getPartitionInfo().setIsMutable(partition.getId(), true);
         OlapTableSink sink = new OlapTableSink(dstTable, tuple, Lists.newArrayList(2L), false);
         sink.init(new TUniqueId(1, 2), 3, 4, 1000, 1, false);
         sink.complete();

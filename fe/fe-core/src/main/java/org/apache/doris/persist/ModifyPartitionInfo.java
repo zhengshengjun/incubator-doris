@@ -47,6 +47,10 @@ public class ModifyPartitionInfo implements Writable {
     private short replicationNum;
     @SerializedName(value = "isInMemory")
     private boolean isInMemory;
+
+    @SerializedName(value = "isMutable")
+    private boolean isMutable = true;
+
     @SerializedName(value = "replicaAlloc")
     private ReplicaAllocation replicaAlloc;
 
@@ -65,7 +69,7 @@ public class ModifyPartitionInfo implements Writable {
 
     public ModifyPartitionInfo(long dbId, long tableId, long partitionId, DataProperty dataProperty,
             ReplicaAllocation replicaAlloc, boolean isInMemory, String storagePolicy,
-            Map<String, String> tblProperties) {
+            Map<String, String> tblProperties, boolean isMutable) {
         this.dbId = dbId;
         this.tableId = tableId;
         this.partitionId = partitionId;
@@ -77,6 +81,7 @@ public class ModifyPartitionInfo implements Writable {
         if (this.tblProperties == null) {
             this.tblProperties = Maps.newHashMap();
         }
+        this.isMutable = isMutable;
     }
 
     public long getDbId() {
@@ -101,6 +106,10 @@ public class ModifyPartitionInfo implements Writable {
 
     public boolean isInMemory() {
         return isInMemory;
+    }
+
+    public boolean isMutable() {
+        return isMutable;
     }
 
     public void setTblProperties(Map<String, String> tblProperties) {
@@ -133,7 +142,8 @@ public class ModifyPartitionInfo implements Writable {
         ModifyPartitionInfo otherInfo = (ModifyPartitionInfo) other;
         return dbId == otherInfo.getDbId() && tableId == otherInfo.getTableId()
                 && dataProperty.equals(otherInfo.getDataProperty()) && replicaAlloc.equals(otherInfo.replicaAlloc)
-                && isInMemory == otherInfo.isInMemory() && storagePolicy.equals(otherInfo.storagePolicy);
+                && isInMemory == otherInfo.isInMemory() && storagePolicy.equals(otherInfo.storagePolicy)
+                && isMutable == otherInfo.isMutable();
     }
 
     @Override
@@ -161,5 +171,8 @@ public class ModifyPartitionInfo implements Writable {
             replicaAlloc = ReplicaAllocation.NOT_SET;
         }
         isInMemory = in.readBoolean();
+        if (Env.getCurrentEnvJournalVersion() >= FeMetaVersion.VERSION_115) {
+            isMutable = in.readBoolean();
+        }
     }
 }

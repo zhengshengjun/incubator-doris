@@ -748,7 +748,8 @@ public class OlapTable extends Table {
                             new ListPartitionItem(Lists.newArrayList(new PartitionKey())),
                             partitionInfo.getDataProperty(partition.getId()),
                             partitionInfo.getReplicaAllocation(partition.getId()),
-                            partitionInfo.getIsInMemory(partition.getId()));
+                            partitionInfo.getIsInMemory(partition.getId()),
+                            partitionInfo.getIsMutable(partition.getId()));
 
                 } else if (partitionInfo.getType() == PartitionType.LIST) {
                     // construct a dummy range
@@ -767,7 +768,8 @@ public class OlapTable extends Table {
                             partitionInfo.getItem(partition.getId()),
                             partitionInfo.getDataProperty(partition.getId()),
                             partitionInfo.getReplicaAllocation(partition.getId()),
-                            partitionInfo.getIsInMemory(partition.getId()));
+                            partitionInfo.getIsInMemory(partition.getId()),
+                            partitionInfo.getIsMutable(partition.getId()));
                 }
             } else if (!reserveTablets) {
                 Env.getCurrentEnv().onErasePartition(partition);
@@ -1297,7 +1299,8 @@ public class OlapTable extends Table {
             for (long partitionId : tempRangeInfo.getIdToItem(false).keySet()) {
                 this.partitionInfo.addPartition(partitionId, true,
                         tempRangeInfo.getItem(partitionId), tempRangeInfo.getDataProperty(partitionId),
-                        tempRangeInfo.getReplicaAllocation(partitionId), tempRangeInfo.getIsInMemory(partitionId));
+                        tempRangeInfo.getReplicaAllocation(partitionId), tempRangeInfo.getIsInMemory(partitionId),
+                        tempRangeInfo.getIsMutable(partitionId));
             }
         }
         tempPartitions.unsetPartitionInfo();
@@ -1381,16 +1384,17 @@ public class OlapTable extends Table {
         DataProperty dataProperty = partitionInfo.getDataProperty(oldPartition.getId());
         ReplicaAllocation replicaAlloc = partitionInfo.getReplicaAllocation(oldPartition.getId());
         boolean isInMemory = partitionInfo.getIsInMemory(oldPartition.getId());
+        boolean isMutable = partitionInfo.getIsMutable(oldPartition.getId());
 
         if (partitionInfo.getType() == PartitionType.RANGE
                 || partitionInfo.getType() == PartitionType.LIST) {
             PartitionItem item = partitionInfo.getItem(oldPartition.getId());
             partitionInfo.dropPartition(oldPartition.getId());
             partitionInfo.addPartition(newPartition.getId(), false, item, dataProperty,
-                    replicaAlloc, isInMemory);
+                    replicaAlloc, isInMemory, isMutable);
         } else {
             partitionInfo.dropPartition(oldPartition.getId());
-            partitionInfo.addPartition(newPartition.getId(), dataProperty, replicaAlloc, isInMemory);
+            partitionInfo.addPartition(newPartition.getId(), dataProperty, replicaAlloc, isInMemory, isMutable);
         }
 
         return oldPartition;

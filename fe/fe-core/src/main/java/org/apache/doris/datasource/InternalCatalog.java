@@ -1501,12 +1501,12 @@ public class InternalCatalog implements CatalogIf<Database> {
                     info = new PartitionPersistInfo(db.getId(), olapTable.getId(), partition,
                             partitionInfo.getItem(partitionId).getItems(), ListPartitionItem.DUMMY_ITEM, dataProperty,
                             partitionInfo.getReplicaAllocation(partitionId), partitionInfo.getIsInMemory(partitionId),
-                            isTempPartition);
+                            isTempPartition, partitionInfo.getIsMutable(partitionId));
                 } else if (partitionInfo.getType() == PartitionType.LIST) {
                     info = new PartitionPersistInfo(db.getId(), olapTable.getId(), partition,
                             RangePartitionItem.DUMMY_ITEM, partitionInfo.getItem(partitionId), dataProperty,
                             partitionInfo.getReplicaAllocation(partitionId), partitionInfo.getIsInMemory(partitionId),
-                            isTempPartition);
+                            isTempPartition, partitionInfo.getIsMutable(partitionId));
                 }
                 Env.getCurrentEnv().getEditLog().logAddPartition(info);
 
@@ -1543,7 +1543,7 @@ public class InternalCatalog implements CatalogIf<Database> {
             }
 
             partitionInfo.unprotectHandleNewSinglePartitionDesc(partition.getId(), info.isTempPartition(),
-                    partitionItem, info.getDataProperty(), info.getReplicaAlloc(), info.isInMemory());
+                    partitionItem, info.getDataProperty(), info.getReplicaAlloc(), info.isInMemory(), info.isMutable());
 
             if (!Env.isCheckpointThread()) {
                 // add to inverted index
@@ -1954,6 +1954,8 @@ public class InternalCatalog implements CatalogIf<Database> {
         }
         olapTable.setStoreRowColumn(storeRowColumn);
 
+        boolean isMutable = PropertyAnalyzer.analyzeBooleanProp(properties, PropertyAnalyzer.PROPERTIES_MUTABLE, true);
+
         // set storage policy
         String storagePolicy = PropertyAnalyzer.analyzeStoragePolicy(properties);
         Env.getCurrentEnv().getPolicyMgr().checkStoragePolicyExist(storagePolicy);
@@ -1985,6 +1987,7 @@ public class InternalCatalog implements CatalogIf<Database> {
             partitionInfo.setReplicaAllocation(partitionId, replicaAlloc);
             partitionInfo.setIsInMemory(partitionId, isInMemory);
             partitionInfo.setTabletType(partitionId, tabletType);
+            partitionInfo.setIsMutable(partitionId, isMutable);
         }
 
         // check colocation properties

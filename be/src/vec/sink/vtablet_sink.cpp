@@ -1004,6 +1004,23 @@ Status VOlapTableSink::find_tablet(RuntimeState* state, vectorized::Block* block
         is_continue = true;
         return status;
     }
+    if (!(*partition)->is_mutable) {
+        RETURN_IF_ERROR(state->append_error_msg_to_file(
+                []() -> std::string { return ""; },
+                [&]() -> std::string {
+                    fmt::memory_buffer buf;
+                    fmt::format_to(buf, "partition immutable for this tuple. tuple={}",
+                                   block->dump_data(row_index, 1));
+                    return fmt::to_string(buf);
+                },
+                &stop_processing));
+        _number_immutable_partition_filtered_rows++;
+        if (stop_processing) {
+            return Status::EndOfFile("Encountered partition immutable, stop processing");
+        }
+        is_continue = true;
+        return status;
+    }
     _partition_ids.emplace((*partition)->id);
     if (findTabletMode != FindTabletMode::FIND_TABLET_EVERY_ROW) {
         if (_partition_to_tablet_map.find((*partition)->id) == _partition_to_tablet_map.end()) {
@@ -1211,6 +1228,7 @@ Status VOlapTableSink::close(RuntimeState* state, Status exec_status) {
                                       state->num_rows_load_unselected();
         state->set_num_rows_load_total(num_rows_load_total);
         state->update_num_rows_load_filtered(_number_filtered_rows);
+        state->update_num_rows_load_unselected(_number_immutable_partition_filtered_rows);
 
         // print log of add batch time of all node, for tracing load performance easily
         std::stringstream ss;
